@@ -59,3 +59,22 @@ Merge vs set, мкс на виклик (найкраще з 10 × 200):
 | пари `array('I')` | 23.7 | 6.60 | 0.09 |
 
 Звичайний екземпляр — 48 байт заголовка плюс окремий `__dict__` на 88 байт; зі slots словника немає. У масиві `array('I')` один постінг — 2 × 4 байти без об'єктів і без вказівників у списку. Повільніше завантаження slots-версії через pickle пояснюється тим, що dataclass зі slots відновлює стан через згенерований на Python `__setstate__`.
+
+## Лаба 3 — рейтинг і модель об'єктів
+
+`Index(Mapping)` підтримує `len`, `in`, `index[term]`, ітерацію і `repr`; `open_index(path)` — контекстний менеджер. TF-IDF і BM25(k1=1.5, b=0.75) задовольняють протокол `Scorer`. Парсер рекурсивного спуску будує дерево `Term/Phrase/And/Or/Not`.
+
+Перевірки рейтингу на корпусі (`scripts/lab3_eval.py`):
+1. idf(zoneinfo, df=12) = 4.600 проти idf(the, df=1173) = 0.058: документ про zoneinfo на першому місці.
+2. Документ середньої довжини, терм asyncio: друге входження додає 1.190 бала, двадцяте — 0.0236.
+3. tf = 1: документ на 85 токенів отримує 2.630, документ на 14 107 токенів — 0.426.
+
+Сліди `@timed` і кешу:
+```
+findex.ranking: cache miss: evaluating 'python AND (async OR await) NOT java "event loop"'
+findex.timing: search took 22.3 ms
+findex.ranking: cache hit for 'python AND (async OR await) NOT java "event loop"'
+findex.timing: search took 14.1 ms
+```
+
+Precision@5 (10 запитів, терми через OR): TF-IDF — 0.50, BM25 — 0.44.

@@ -1,0 +1,21 @@
+{
+  "keyword": [
+    {"q": "asyncio task group cancellation", "rel": ["pydocs/library/asyncio-task.rst", "pydocs/library/asyncio-exceptions.rst", "pydocs/howto/a-conceptual-overview-of-asyncio.rst", "pydocs/library/asyncio-api-index.rst"]},
+    {"q": "pickle security untrusted", "rel": ["pydocs/library/pickle.rst", "pydocs/library/pickletools.rst", "pydocs/library/shelve.rst", "pydocs/library/marshal.rst"]},
+    {"q": "queryset filter exclude", "rel": ["django/ref/models/querysets.txt", "django/topics/db/queries.txt", "django/ref/models/lookups.txt"]},
+    {"q": "decorator wraps", "rel": ["pydocs/library/functools.rst", "pydocs/glossary.rst", "pydocs/howto/descriptor.rst"]},
+    {"q": "csrf token middleware", "rel": ["django/ref/csrf.txt", "django/howto/csrf.txt", "django/ref/middleware.txt", "django/topics/security.txt"]},
+    {"q": "unicode normalization nfc", "rel": ["pydocs/library/unicodedata.rst", "pydocs/howto/unicode.rst"]},
+    {"q": "database transaction atomic", "rel": ["django/topics/db/transactions.txt", "django/ref/databases.txt", "pydocs/library/sqlite3.rst"]},
+    {"q": "thread pool executor", "rel": ["pydocs/library/concurrent.futures.rst", "pydocs/library/asyncio-eventloop.rst", "pydocs/library/multiprocessing.rst", "pydocs/library/threading.rst"]},
+    {"q": "model field choices", "rel": ["django/ref/models/fields.txt", "django/topics/db/models.txt", "django/ref/forms/fields.txt"]},
+    {"q": "logging handler formatter", "rel": ["pydocs/library/logging.rst", "pydocs/library/logging.handlers.rst", "pydocs/howto/logging.rst", "pydocs/howto/logging-cookbook.rst", "pydocs/library/logging.config.rst"]}
+  ],
+  "paraphrase": [
+    {"q": "run several network requests at the same time without threads", "rel": ["pydocs/library/asyncio-task.rst", "pydocs/howto/a-conceptual-overview-of-asyncio.rst", "pydocs/library/asyncio.rst", "django/topics/async.txt"]},
+    {"q": "save python objects to a file and restore them later", "rel": ["pydocs/library/pickle.rst", "pydocs/library/shelve.rst", "pydocs/library/marshal.rst", "pydocs/library/copyreg.rst"]},
+    {"q": "protect web forms from cross site attacks", "rel": ["django/ref/csrf.txt", "django/howto/csrf.txt", "django/topics/security.txt"]},
+    {"q": "remember results of expensive calls", "rel": ["pydocs/library/functools.rst", "django/topics/cache.txt"]},
+    {"q": "make text in different scripts compare equal", "rel": ["pydocs/library/unicodedata.rst", "pydocs/howto/unicode.rst"]}
+  ]
+}

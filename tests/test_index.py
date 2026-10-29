@@ -1,4 +1,5 @@
 """Перевірки ЛР2: збірка індексу, Boolean-пошук, збереження."""
+
 import pickle
 from pathlib import Path
 
