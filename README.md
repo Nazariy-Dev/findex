@@ -78,3 +78,18 @@ findex.timing: search took 14.1 ms
 ```
 
 Precision@5 (10 запитів, терми через OR): TF-IDF — 0.50, BM25 — 0.44.
+
+## Лаба 4 — типи, тести, пакування, CLI
+
+![CI](https://github.com/<user>/findex/actions/workflows/ci.yml/badge.svg)
+
+```
+uv tool install .            # або: uv tool install dist/findex-0.4.0-py3-none-any.whl
+findex index data/ -o index.bin
+findex search index.bin '"event loop" (thread OR executor)' -k 3
+findex search index.bin 'pickle untrusted' --json | jq .path
+findex stats index.bin
+```
+
+pyright strict: 0 errors; ruff: clean; pytest: 48 тестів (4 властивості Hypothesis), покриття 80%.
+Поза покриттям навмисно лишились `stats.py` і `main()` у `index.py`/`search.py` (старі точки входу ЛР1–2, замінені CLI) та гілка JSONL у `corpus.py` (корпус у форматі каталогу).

@@ -11,7 +11,7 @@ from __future__ import annotations
 import argparse
 import time
 import tracemalloc
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Literal
 
@@ -72,13 +72,22 @@ def merge_not(a: Sequence[int], b: Sequence[int]) -> list[int]:
     return out
 
 
-OPS = {
+def set_and(a: Sequence[int], b: Sequence[int]) -> list[int]:
+    return sorted(set(a) & set(b))
+
+
+def set_or(a: Sequence[int], b: Sequence[int]) -> list[int]:
+    return sorted(set(a) | set(b))
+
+
+def set_not(a: Sequence[int], b: Sequence[int]) -> list[int]:
+    return sorted(set(a) - set(b))
+
+
+type MergeFn = Callable[[Sequence[int], Sequence[int]], list[int]]
+OPS: dict[str, dict[str, MergeFn]] = {
     "merge": {"AND": merge_and, "OR": merge_or, "NOT": merge_not},
-    "set": {
-        "AND": lambda a, b: sorted(set(a) & set(b)),
-        "OR": lambda a, b: sorted(set(a) | set(b)),
-        "NOT": lambda a, b: sorted(set(a) - set(b)),
-    },
+    "set": {"AND": set_and, "OR": set_or, "NOT": set_not},
 }
 
 

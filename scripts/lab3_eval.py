@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 from findex.model import Posting
-from findex.ranking import BM25, Index, TfIdf, open_index, rank, search
+from findex.ranking import BM25, Index, TfIdf, open_index, rank, render_snippet, search
 
 
 def p_at_5(ix: Index, q: str, rel: set[str], scorer: object) -> float:
@@ -36,7 +36,9 @@ def sanity(ix: Index) -> None:
     avg_doc = min(ix.doc_ids, key=lambda d: abs(ix.doc_length(d) - ix.avg_doc_length))
     for tf in (1, 2, 5, 10, 19, 20):
         s = bm.score(term, Posting(avg_doc, tf), ix)
-        print(f"  tf={tf:2}  bm25={s:.3f}  tfidf={TfIdf().score(term, Posting(avg_doc, tf), ix):.3f}")
+        print(
+            f"  tf={tf:2}  bm25={s:.3f}  tfidf={TfIdf().score(term, Posting(avg_doc, tf), ix):.3f}"
+        )
     s19 = bm.score(term, Posting(avg_doc, 19), ix)
     s20 = bm.score(term, Posting(avg_doc, 20), ix)
     s1 = bm.score(term, Posting(avg_doc, 1), ix)
@@ -49,8 +51,10 @@ def sanity(ix: Index) -> None:
     short = min(once, key=lambda p: ix.doc_length(p.doc_id))
     long_ = max(once, key=lambda p: ix.doc_length(p.doc_id))
     for p in (short, long_):
-        print(f"  len={ix.doc_length(p.doc_id):6} tf=1 bm25={bm.score(term, p, ix):.3f} "
-              f"{ix.meta(p.doc_id).path}")
+        print(
+            f"  len={ix.doc_length(p.doc_id):6} tf=1 bm25={bm.score(term, p, ix):.3f} "
+            f"{ix.meta(p.doc_id).path}"
+        )
 
 
 def main() -> None:
@@ -63,7 +67,7 @@ def main() -> None:
         for _ in range(2):
             res = search(ix, q, k=3)
         for r in res:
-            print(f"  {r.score:6.2f} {r.title} | {r.snippet}")
+            print(f"  {r.score:6.2f} {r.title} | {render_snippet(r.snippet, '[', ']')}")
         logging.getLogger().setLevel(logging.WARNING)
         print()
         sanity(ix)

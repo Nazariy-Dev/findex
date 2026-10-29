@@ -88,7 +88,7 @@ def load(path: Path) -> InvertedIndex:
     off = h["offsets"]
     pcur = 0
     for i, t in enumerate(h["terms"]):
-        lst = []
+        lst: list[Posting] = []
         for j in range(off[i], off[i + 1]):
             if h["has_positions"]:
                 c = pos_counts[j]

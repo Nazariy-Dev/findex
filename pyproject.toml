@@ -1,6 +1,6 @@
 [project]
 name = "findex"
-version = "0.1.0"
+version = "0.4.0"
 description = "Full-text search engine over the Python and Django documentation"
 readme = "README.md"
 authors = [
@@ -41,3 +41,15 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+
+[project.scripts]
+findex = "findex.cli:app"
+
+[tool.pyright]
+include = ["src"]
+typeCheckingMode = "strict"
+pythonVersion = "3.13"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["slow: tests slower than one second"]

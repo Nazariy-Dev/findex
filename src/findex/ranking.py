@@ -7,7 +7,7 @@ import heapq
 import logging
 import math
 import re
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Generator, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -97,7 +97,7 @@ def load_index(path: Path) -> Index:
 
 
 @contextmanager
-def open_index(path: Path) -> Iterator[Index]:
+def open_index(path: Path) -> Generator[Index]:
     """Контекстний менеджер: індекс закривається і при винятку в тілі with."""
     index = load_index(path)
     try:
@@ -165,8 +165,17 @@ def rank(
 
 
 # ---------------- сніпети ----------------
+HL_OPEN, HL_CLOSE = "\x02", "\x03"  # маркери підсвітки; розмітку підставляє споживач
+
+
+def render_snippet(snippet: str, open_: str, close: str, escape: Callable[[str], str] = str) -> str:
+    """Замінити маркери на реальну розмітку (rich, HTML, markdown), екрануючи текст."""
+    parts = re.split(f"([{HL_OPEN}{HL_CLOSE}])", snippet)
+    return "".join(open_ if x == HL_OPEN else close if x == HL_CLOSE else escape(x) for x in parts)
+
+
 def make_snippet(
-    text: str, terms: list[str], width: int = 80, mark: tuple[str, str] = ("[", "]")
+    text: str, terms: list[str], width: int = 80, mark: tuple[str, str] = (HL_OPEN, HL_CLOSE)
 ) -> str:
     """Вікно ±width символів навколо місця з найбільшою кількістю термів запиту."""
     if not text or not terms:
@@ -185,7 +194,8 @@ def make_snippet(
         if cnt > best_cnt:
             best, best_cnt = h, cnt
     lo, hi = max(0, best.start() - width), min(len(src), best.end() + width)
-    out, pos = [], lo
+    out: list[str] = []
+    pos = lo
     for h in hits:
         if h.start() >= lo and h.end() <= hi:
             out.append(src[pos : h.start()])

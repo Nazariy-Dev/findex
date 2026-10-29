@@ -12,7 +12,7 @@ import itertools
 import time
 import tracemalloc
 from collections import Counter
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -46,10 +46,12 @@ def eager_stats(docs: Iterable[Document], top_n: int = 50) -> CorpusStats:
     return CorpusStats(len(all_docs), counts.total(), len(counts), counts.most_common(top_n))
 
 
-def measure(fn, *args):  # type: ignore[no-untyped-def]
+def measure(
+    fn: Callable[[Iterable[Document], int], CorpusStats], docs: Iterable[Document], top_n: int
+) -> tuple[CorpusStats, float, int]:
     tracemalloc.start()
     t0 = time.perf_counter()
-    result = fn(*args)
+    result = fn(docs, top_n)
     elapsed = time.perf_counter() - t0
     _, peak = tracemalloc.get_traced_memory()
     tracemalloc.stop()
