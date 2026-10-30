@@ -219,5 +219,22 @@ def crawl_cmd(
     err.print(f"crawled {st.fetched} pages ({st.errors} errors) -> {out_path}; log: {log_file}")
 
 
+@app.command("serve")
+def serve_cmd(
+    index_path: Annotated[Path | None, typer.Option("--index", help="INDEX_PATH")] = None,
+    host: Annotated[str, typer.Option()] = "127.0.0.1",
+    port: Annotated[int, typer.Option()] = 8000,
+    workers: Annotated[int, typer.Option(min=1)] = 1,
+) -> None:
+    """HTTP API і сторінка пошуку (uvicorn)."""
+    import os
+
+    import uvicorn
+
+    if index_path is not None:
+        os.environ["INDEX_PATH"] = str(index_path)  # конфіг лише з оточення, як у контейнері
+    uvicorn.run("findex.web:app", host=host, port=port, workers=workers, log_level="info")
+
+
 if __name__ == "__main__":
     app()

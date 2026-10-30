@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}findex{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
+</head>
+<body>
+  <header><a class="logo" href="/">findex</a><span class="sub">пошук по документації Python і Django</span></header>
+  <main>{% block body %}{% endblock %}</main>
+  <footer>findex · FastAPI · <a href="/docs">API</a> · <a href="/stats">stats</a></footer>
+</body>
+</html>

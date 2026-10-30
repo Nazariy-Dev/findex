@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ q ~ ' — ' if q }}findex{% endblock %}
+{% block body %}
+<form class="search" action="/" method="get">
+  <input name="q" value="{{ q }}" placeholder='наприклад: asyncio "event loop" NOT django' autofocus>
+  <select name="scorer">
+    <option value="bm25" {{ 'selected' if scorer == 'bm25' }}>BM25</option>
+    <option value="tfidf" {{ 'selected' if scorer == 'tfidf' }}>TF-IDF</option>
+  </select>
+  <button>Шукати</button>
+</form>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+{% if res %}
+  <p class="meta">{{ res.total }} документів · {{ res.took_ms }} мс · сторінка {{ res.page }} з {{ res.pages }}</p>
+  <ol class="results" start="{{ (res.page - 1) * 10 + 1 }}">
+  {% for r in res.results %}
+    <li>
+      <a class="title" href="/doc/{{ r.doc_id }}?q={{ q | urlencode }}">{{ r.title }}</a>
+      <span class="score">{{ '%.2f' % r.score }}</span>
+      <div class="path">{{ r.path }}</div>
+      <p class="snippet">{{ r.snippet | safe }}</p>
+    </li>
+  {% endfor %}
+  </ol>
+  <nav class="pager">
+    {% if res.page > 1 %}<a href="/?q={{ q | urlencode }}&scorer={{ scorer }}&page={{ res.page - 1 }}">← назад</a>{% endif %}
+    {% if res.page < res.pages %}<a href="/?q={{ q | urlencode }}&scorer={{ scorer }}&page={{ res.page + 1 }}">далі →</a>{% endif %}
+  </nav>
+{% elif not error %}
+  <p class="meta">{{ docs }} документів, {{ terms }} термів. Підтримуються AND, OR, NOT, дужки і "фрази".</p>
+{% endif %}
+{% endblock %}
