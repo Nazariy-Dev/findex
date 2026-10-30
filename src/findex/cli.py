@@ -22,6 +22,7 @@ from rich.table import Table
 from findex import __version__
 from findex.corpus import Document, iter_documents, iter_paths
 from findex.index import build_index
+from findex.parallel import ExecutorName, build_parallel
 from findex.query import QuerySyntaxError
 from findex.ranking import BM25, Index, Scorer, TfIdf, load_index, render_snippet, search
 from findex.store import save
@@ -77,34 +78,44 @@ def index_cmd(
     positions: Annotated[bool, typer.Option(help="зберігати позиції (для фраз)")] = True,
     limit: Annotated[int | None, typer.Option(help="лише перші N документів")] = None,
     fmt: Annotated[str, typer.Option("--format", help="pickle або binary")] = "binary",
+    workers: Annotated[int, typer.Option("--workers", "-w", min=1, help="число воркерів")] = 2,
+    executor: Annotated[str, typer.Option(help="serial | threads | processes")] = "serial",
 ) -> None:
     """Побудувати індекс і зберегти його."""
     if not corpus.exists():
         raise fail(f"corpus not found: {corpus}")
     if fmt not in ("pickle", "binary"):
         raise fail(f"unknown format {fmt!r}", 2)
-    total = sum(1 for _ in iter_paths(corpus))
-    if limit is not None:
-        total = min(total, limit)
-    with Progress(
-        "[progress.description]{task.description}",
-        BarColumn(),
-        MofNCompleteColumn(),
-        TimeElapsedColumn(),
-        console=err,
-        transient=True,
-    ) as bar:
-        task = bar.add_task("indexing", total=total)
+    if executor not in ("serial", "threads", "processes"):
+        raise fail(f"unknown executor {executor!r}", 2)
+    if limit is None and executor != "serial":
+        ex: ExecutorName = "threads" if executor == "threads" else "processes"
+        with err.status(f"indexing with {workers} {ex}…"):
+            ix, tm = build_parallel(corpus, workers, ex, positions=positions)
+        log.info("map %.2f s, merge %.2f s", tm.map_s, tm.merge_s)
+    else:
+        total = sum(1 for _ in iter_paths(corpus))
+        if limit is not None:
+            total = min(total, limit)
+        with Progress(
+            "[progress.description]{task.description}",
+            BarColumn(),
+            MofNCompleteColumn(),
+            TimeElapsedColumn(),
+            console=err,
+            transient=True,
+        ) as bar:
+            task = bar.add_task("indexing", total=total)
 
-        def tracked() -> Iterator[Document]:
-            for i, d in enumerate(iter_documents(corpus)):
-                if limit is not None and i >= limit:
-                    return
-                bar.advance(task)
-                yield d
+            def tracked() -> Iterator[Document]:
+                for i, d in enumerate(iter_documents(corpus)):
+                    if limit is not None and i >= limit:
+                        return
+                    bar.advance(task)
+                    yield d
 
-        ix = build_index(tracked(), positions=positions)
-    ix.root = str(corpus.resolve())
+            ix = build_index(tracked(), positions=positions)
+        ix.root = str(corpus.resolve())
     save(ix, out_path, "binary" if fmt == "binary" else "pickle")
     log.info("saved %s", out_path)
     err.print(f"indexed {ix.num_docs} documents, {len(ix.postings)} terms -> {out_path}")
@@ -170,6 +181,42 @@ def stats_cmd(index_path: Annotated[Path, typer.Argument(metavar="INDEX")]) -> N
     ):
         t.add_row(name, str(val))
     out.print(t)
+
+
+@app.command("crawl")
+def crawl_cmd(
+    seed: Annotated[str, typer.Argument(help="початковий URL")],
+    out_path: Annotated[Path, typer.Option("--out", "-o")] = Path("data/crawl.jsonl"),
+    max_pages: Annotated[int, typer.Option(min=1)] = 500,
+    concurrency: Annotated[int, typer.Option(min=1)] = 10,
+    per_host: Annotated[int, typer.Option(min=1)] = 2,
+    min_delay: Annotated[
+        float, typer.Option(help="мінімальна пауза між запитами до хоста, с")
+    ] = 0.0,
+    log_file: Annotated[Path, typer.Option("--log")] = Path("crawl.log"),
+    debug: Annotated[bool, typer.Option(help="asyncio debug: попередження про блокування")] = False,
+) -> None:
+    """Асинхронний обхід сайту з повагою до robots.txt; JSONL пишеться потоково."""
+    import asyncio
+
+    from findex.crawler.cli_crawl import run_crawl
+
+    st = asyncio.run(
+        run_crawl(
+            seed,
+            out_path,
+            log_file,
+            max_pages,
+            concurrency,
+            per_host,
+            min_delay,
+            err,
+            live=err.is_terminal,
+            debug=debug,
+        ),
+        debug=debug,
+    )
+    err.print(f"crawled {st.fetched} pages ({st.errors} errors) -> {out_path}; log: {log_file}")
 
 
 if __name__ == "__main__":
