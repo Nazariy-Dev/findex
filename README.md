@@ -121,3 +121,26 @@ pyright strict: 0 errors; ruff: clean; pytest: 48 тестів (4 властив
 
 I/O-дослід (`scripts/lab5_io.py`, 50 URL, затримка сервера 50 мс): 1 потік — 2.60 s, 16 потоків — 0.23 s (11,4×).
 Типовим лишається `--executor serial`: на цій машині процеси не дали стабільного виграшу в повному часі.
+
+## Лаба 6 — асинхронний краулер
+
+`findex crawl <seed> --max-pages 500 --concurrency 10 --per-host 2 [--min-delay 0.2] --out data/crawl.jsonl --log crawl.log`
+
+Дозвіл: обходиться лише власне локальне дзеркало корпусу (`scripts/build_mirror.py` + `scripts/mirror_server.py`, затримка відповіді 50 мс), robots.txt дзеркала забороняє `/pydocs/whatsnew/`. User-Agent: `findex-crawler/0.6 (student project; +https://github.com/nazarpoptsov/findex)`. Стеля — `--max-pages`.
+
+Seed `http://127.0.0.1:8765/index.html`, max_pages = 250:
+
+| Concurrency | per_host | Сторінки | Wall, s | Сторінок/с | Помилки | Пік RSS, MB |
+|---|---|---|---|---|---|---|
+| 1 | 1 | 250 | 13.57 | 18.4 | 0 | 46 |
+| 5 | 5 | 250 | 3.02 | 82.7 | 0 | 47 |
+| 20 | 20 | 250 | 1.07 | 234.5 | 0 | 47 |
+| 20 | 2 | 250 | 7.17 | 34.9 | 0 | 47 |
+
+Збій 429 (сервер повертає 429 з `Retry-After: 1` кожному 7-му запиту), лог:
+```
+INFO findex.crawler.fetch: retry http://127.0.0.1:8766/django/README.html in 1.00s (attempt 1, status 429, Retry-After)
+03:16:33 200 1131 1.109s attempts=2  http://127.0.0.1:8766/django/README.html
+```
+Запуск із `--debug` (`asyncio.run(..., debug=True)`) не дав жодного попередження про блокування циклу подій.
+Повний обхід: 1048 сторінок → `findex index crawl.jsonl` → 43 029 термів.

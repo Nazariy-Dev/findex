@@ -81,8 +81,19 @@ class Index(Mapping[str, list[Posting]]):
     def text(self, doc_id: int) -> str:
         """Повний текст документа з корпусу (для сніпетів і перегляду)."""
         root = Path(self._raw.root)
+        if root.suffix == ".jsonl":  # корпус від краулера: тексти лежать у рядках JSONL
+            return self._jsonl_texts().get(doc_id, "")
         p = root / self.meta(doc_id).path
         return p.read_text(encoding="utf-8", errors="replace") if p.is_file() else ""
+
+    def _jsonl_texts(self) -> dict[int, str]:
+        cached: dict[int, str] | None = getattr(self, "_jsonl_cache", None)
+        if cached is None:
+            from findex.corpus import iter_documents
+
+            cached = {d.doc_id: d.text for d in iter_documents(Path(self._raw.root))}
+            self._jsonl_cache = cached
+        return cached
 
     def close(self) -> None:
         self._postings = {}
