@@ -7,6 +7,13 @@
     <option value="bm25" {{ 'selected' if scorer == 'bm25' }}>BM25</option>
     <option value="tfidf" {{ 'selected' if scorer == 'tfidf' }}>TF-IDF</option>
   </select>
+  {% if has_semantic %}
+  <select name="mode">
+    <option value="keyword" {{ 'selected' if mode == 'keyword' }}>слова</option>
+    <option value="semantic" {{ 'selected' if mode == 'semantic' }}>зміст</option>
+    <option value="hybrid" {{ 'selected' if mode == 'hybrid' }}>гібрид</option>
+  </select>
+  {% endif %}
   <button>Шукати</button>
 </form>
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
@@ -23,8 +30,8 @@
   {% endfor %}
   </ol>
   <nav class="pager">
-    {% if res.page > 1 %}<a href="/?q={{ q | urlencode }}&scorer={{ scorer }}&page={{ res.page - 1 }}">← назад</a>{% endif %}
-    {% if res.page < res.pages %}<a href="/?q={{ q | urlencode }}&scorer={{ scorer }}&page={{ res.page + 1 }}">далі →</a>{% endif %}
+    {% if res.page > 1 %}<a href="/?q={{ q | urlencode }}&scorer={{ scorer }}&mode={{ mode }}&page={{ res.page - 1 }}">← назад</a>{% endif %}
+    {% if res.page < res.pages %}<a href="/?q={{ q | urlencode }}&scorer={{ scorer }}&mode={{ mode }}&page={{ res.page + 1 }}">далі →</a>{% endif %}
   </nav>
 {% elif not error %}
   <p class="meta">{{ docs }} документів, {{ terms }} термів. Підтримуються AND, OR, NOT, дужки і "фрази".</p>

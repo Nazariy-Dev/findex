@@ -1,6 +1,6 @@
 [project]
 name = "findex"
-version = "0.7.0"
+version = "1.0.0"
 description = "Full-text search engine over the Python and Django documentation"
 readme = "README.md"
 authors = [
@@ -29,7 +29,7 @@ dev = [
     "matplotlib>=3.11.2",
     "py-spy>=0.4.2",
     "pyright>=1.1.414",
-    "pytest>=9.2.0",
+    "pytest>=9.0,<9.2",
     "pytest-benchmark>=5.3.0",
     "pytest-cov>=7.1.0",
     "ruff>=0.17.3",
@@ -44,6 +44,11 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM"]
 
 [project.scripts]
 findex = "findex.cli:app"
+
+[project.optional-dependencies]
+semantic = [
+    "wordllama>=0.4.0.post1",
+]
 
 [tool.pyright]
 include = ["src"]

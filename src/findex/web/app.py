@@ -24,12 +24,14 @@ from findex.ranking import (
     BM25,
     Index,
     Scorer,
+    SearchResult,
     TfIdf,
     load_index,
     make_snippet,
     rank,
     render_snippet,
 )
+from findex.semantic import HybridSearcher
 from findex.web.schemas import DocumentOut, Health, SearchResponse, SearchResultOut, StatsOut
 from findex.web.settings import Settings
 
@@ -43,6 +45,10 @@ def get_settings(request: Request) -> Settings:
     return request.app.state.settings
 
 
+def get_hybrid(request: Request) -> HybridSearcher | None:
+    return getattr(request.app.state, "hybrid", None)
+
+
 def get_index(request: Request) -> Index:
     index: Index | None = getattr(request.app.state, "index", None)
     if index is None:
@@ -51,13 +57,23 @@ def get_index(request: Request) -> Index:
 
 
 IndexDep = Annotated[Index, Depends(get_index)]
+HybridDep = Annotated[HybridSearcher | None, Depends(get_hybrid)]
 QParam = Annotated[str, Query(min_length=1, max_length=200)]
 KParam = Annotated[int, Query(ge=1, le=PAGE_SIZE_MAX)]
 PageParam = Annotated[int, Query(ge=1, le=100)]
 ScorerParam = Literal["bm25", "tfidf"]
+ModeParam = Literal["keyword", "semantic", "hybrid"]
 
 
-def run_search(index: Index, q: str, scorer: str, k: int, page: int) -> SearchResponse:
+def run_search(
+    index: Index,
+    q: str,
+    scorer: str,
+    k: int,
+    page: int,
+    mode: str = "keyword",
+    hybrid: HybridSearcher | None = None,
+) -> SearchResponse:
     """Чиста функція поверх ЛР3: пошук, посторінковий зріз, сніпети тільки для сторінки."""
     t0 = time.perf_counter()
     try:
@@ -66,7 +82,17 @@ def run_search(index: Index, q: str, scorer: str, k: int, page: int) -> SearchRe
     except QuerySyntaxError as e:
         raise HTTPException(422, f"bad query: {e}") from None
     terms = node.terms()
-    ranked = rank(index, terms, ids, SCORERS[scorer], k * page)
+    ranked = rank(index, terms, ids, SCORERS[scorer], max(k * page, 50))
+    if mode != "keyword":
+        if hybrid is None:
+            raise HTTPException(503, "semantic index is not available")
+        pairs = (
+            hybrid.semantic(q, k * page)
+            if mode == "semantic"
+            else hybrid.hybrid([r.doc_id for r in ranked], q, k * page)
+        )
+        ranked = [SearchResult(sc, -d, d, index.meta(d).title) for d, sc in pairs]
+        ids = {d for d, _ in pairs}  # total = довжина злитого / семантичного рейтингу
     chunk = ranked[(page - 1) * k : page * k]
     results = [
         SearchResultOut(
@@ -83,7 +109,7 @@ def run_search(index: Index, q: str, scorer: str, k: int, page: int) -> SearchRe
     ]
     return SearchResponse(
         query=q,
-        scorer=scorer,
+        scorer=scorer if mode == "keyword" else mode,
         total=len(ids),
         page=page,
         pages=max(1, math.ceil(len(ids) / k)),
@@ -103,6 +129,7 @@ def create_app(settings: Settings | None = None, load: bool = True) -> FastAPI:
             # завантаження блокує на ~1 с: виносимо в потік, цикл подій лишається вільним
             app.state.index = await asyncio.to_thread(load_index, settings.index_path)
             log.info("index loaded from %s: %r", settings.index_path, app.state.index)
+            app.state.hybrid = await asyncio.to_thread(HybridSearcher.open, settings.index_path)
         yield
         # закриваємо лише той індекс, який завантажили самі (не підставлений ззовні в тестах)
         if load:
@@ -134,23 +161,27 @@ def create_app(settings: Settings | None = None, load: bool = True) -> FastAPI:
         @app.get("/search", response_model=SearchResponse)
         async def search_async(
             index: IndexDep,
+            hybrid: HybridDep,
             q: QParam,
             k: KParam = 10,
             scorer: ScorerParam = "bm25",
             page: PageParam = 1,
+            mode: ModeParam = "keyword",
         ) -> SearchResponse:
-            return run_search(index, q, scorer, k, page)
+            return run_search(index, q, scorer, k, page, mode, hybrid)
     else:
         # звичайний def: FastAPI виконує його в пулі потоків, цикл подій не блокується
         @app.get("/search", response_model=SearchResponse)
         def search(
             index: IndexDep,
+            hybrid: HybridDep,
             q: QParam,
             k: KParam = 10,
             scorer: ScorerParam = "bm25",
             page: PageParam = 1,
+            mode: ModeParam = "keyword",
         ) -> SearchResponse:
-            return run_search(index, q, scorer, k, page)
+            return run_search(index, q, scorer, k, page, mode, hybrid)
 
     @app.get("/docs/{doc_id}", response_model=DocumentOut)
     def get_document(doc_id: int, index: IndexDep) -> DocumentOut:
@@ -189,11 +220,14 @@ def create_app(settings: Settings | None = None, load: bool = True) -> FastAPI:
         q: str = "",
         scorer: ScorerParam = "bm25",
         page: PageParam = 1,
+        mode: ModeParam = "keyword",
     ) -> HTMLResponse:
         index = get_index(request)
         ctx: dict[str, object] = {
             "q": q,
             "scorer": scorer,
+            "mode": mode,
+            "has_semantic": get_hybrid(request) is not None,
             "res": None,
             "error": None,
             "docs": index.num_docs,
@@ -201,7 +235,7 @@ def create_app(settings: Settings | None = None, load: bool = True) -> FastAPI:
         }
         if q.strip():
             try:
-                res = run_search(index, q, scorer, 10, page)
+                res = run_search(index, q, scorer, 10, page, mode, get_hybrid(request))
                 ctx["res"] = res
             except HTTPException as e:
                 ctx["error"] = e.detail

@@ -24,8 +24,19 @@ from findex.corpus import Document, iter_documents, iter_paths
 from findex.index import build_index
 from findex.parallel import ExecutorName, build_parallel
 from findex.query import QuerySyntaxError
-from findex.ranking import BM25, Index, Scorer, TfIdf, load_index, render_snippet, search
+from findex.ranking import (
+    BM25,
+    Index,
+    Scorer,
+    SearchResult,
+    TfIdf,
+    load_index,
+    make_snippet,
+    render_snippet,
+    search,
+)
 from findex.store import save
+from findex.tokenize import tokenize
 
 app = typer.Typer(add_completion=False, no_args_is_help=True, help="findex — пошук по корпусу")
 out = Console()  # stdout: дані
@@ -128,15 +139,20 @@ def search_cmd(
     k: Annotated[int, typer.Option("--k", "-k", min=1, max=100)] = 10,
     scorer: Annotated[str, typer.Option(help="bm25 | tfidf")] = "bm25",
     as_json: Annotated[bool, typer.Option("--json", help="JSON lines у stdout")] = False,
+    mode: Annotated[str, typer.Option(help="keyword | semantic | hybrid")] = "keyword",
 ) -> None:
     """Ранжований пошук з підсвіченими сніпетами."""
     if scorer not in SCORERS:
         raise fail(f"unknown scorer {scorer!r}; use bm25 or tfidf", 2)
+    if mode not in ("keyword", "semantic", "hybrid"):
+        raise fail(f"unknown mode {mode!r}", 2)
     ix = _load(index_path)
     try:
-        results = search(ix, query, SCORERS[scorer], k=k)
+        results = search_mode(ix, index_path, query, mode, SCORERS[scorer], k)
     except QuerySyntaxError as e:
         raise fail(f"bad query: {e}", 2) from None
+    except FileNotFoundError as e:
+        raise fail(str(e)) from None
     if as_json:
         for r in results:
             rec = {
@@ -162,6 +178,60 @@ def search_cmd(
             snip,
         )
     out.print(table)
+
+
+def search_mode(
+    ix: Index, index_path: Path, query: str, mode: str, scorer: Scorer, k: int
+) -> list[SearchResult]:
+    """keyword — ЛР3; semantic — найкращий фрагмент; hybrid — RRF двох рейтингів."""
+    if mode == "keyword":
+        return search(ix, query, scorer, k=k)
+    from findex.query import parse
+    from findex.semantic import HybridSearcher
+
+    hs = HybridSearcher.open(index_path)
+    if hs is None:
+        raise FileNotFoundError(f"no embeddings for {index_path}; run: findex embed {index_path}")
+    terms = parse(query).terms() if mode == "hybrid" else list(tokenize(query))
+    if mode == "semantic":
+        ranked = hs.semantic(query, k)
+    else:
+        kw = [r.doc_id for r in search(ix, query, scorer, k=50, snippets=False)]
+        ranked = hs.hybrid(kw, query, k)
+    return [
+        SearchResult(sc, -d, d, ix.meta(d).title, make_snippet(ix.text(d), terms))
+        for d, sc in ranked
+    ]
+
+
+@app.command("embed")
+def embed_cmd(index_path: Annotated[Path, typer.Argument(metavar="INDEX")]) -> None:
+    """Порахувати ембединги фрагментів і зберегти поруч з індексом (.emb.npy)."""
+    from findex.semantic import WordLlamaEmbedder, build_embeddings
+
+    ix = _load(index_path)
+    if not ix.raw.root:
+        raise fail("index has no corpus root; rebuild it with findex index")
+    emb_model = WordLlamaEmbedder()
+    with Progress(
+        "[progress.description]{task.description}",
+        BarColumn(),
+        MofNCompleteColumn(),
+        TimeElapsedColumn(),
+        console=err,
+        transient=True,
+    ) as bar:
+        task = bar.add_task("embedding", total=ix.num_docs)
+        emb = build_embeddings(
+            iter_documents(Path(ix.raw.root)),
+            emb_model,
+            WordLlamaEmbedder.name,
+            progress=lambda n: bar.advance(task, n),
+        )
+    emb.save(index_path)
+    err.print(
+        f"{emb.E.shape[0]} chunks x {emb.E.shape[1]} dims -> {index_path.with_suffix('.emb.npy')}"
+    )
 
 
 @app.command("stats")

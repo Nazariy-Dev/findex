@@ -86,3 +86,36 @@ def test_html_page(client: TestClient) -> None:
     r = client.get("/", params={"q": "queryset"})
     assert r.status_code == 200 and "<mark>queryset</mark>" in r.text.lower()
     assert client.get("/doc/0").status_code == 200
+
+
+def test_semantic_mode_without_embeddings_is_503(client: TestClient) -> None:
+    r = client.get("/search", params={"q": "event", "mode": "semantic"})
+    assert r.status_code == 503
+
+
+def test_semantic_and_hybrid_modes(client: TestClient, small_index: Index) -> None:
+    import numpy as np
+
+    from findex.semantic import Embeddings, HybridSearcher
+
+    class FakeEmbedder:
+        """Детермінований «ембединг»: мішок слів на 64 кошики (без моделі в тестах)."""
+
+        def embed(self, texts: list[str]) -> np.ndarray:  # type: ignore[type-arg]
+            out = np.zeros((len(texts), 64), dtype=np.float32)
+            for i, t in enumerate(texts):
+                for w in t.lower().split():
+                    out[i, sum(map(ord, w)) % 64] += 1
+            return out
+
+    from findex.corpus import iter_documents
+    from findex.semantic import build_embeddings
+
+    emb: Embeddings = build_embeddings(
+        iter_documents(__import__("pathlib").Path(small_index.raw.root)), FakeEmbedder(), "fake"
+    )
+    client.app.state.hybrid = HybridSearcher(emb, FakeEmbedder())  # type: ignore[attr-defined]
+    for mode in ("semantic", "hybrid"):
+        r = client.get("/search", params={"q": "queryset lazy", "mode": mode, "k": 3})
+        assert r.status_code == 200, r.text
+        assert r.json()["results"][0]["path"] == "django.txt"

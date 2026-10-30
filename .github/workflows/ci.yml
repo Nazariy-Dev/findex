@@ -11,8 +11,9 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.13"
-      - run: uv sync --locked
+      - run: uv sync --locked --extra semantic
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pyright
-      - run: uv run pytest --cov=findex
+      - run: uv run pytest --cov=findex --benchmark-autosave
+      - run: uv run pytest tests/test_benchmark.py --benchmark-compare --benchmark-compare-fail=mean:25% || true
