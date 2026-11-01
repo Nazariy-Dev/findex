@@ -15,3 +15,5 @@ data/
 *.json.idx
 .coverage
 .benchmarks/
+deploy/data/
+deploy/index.*

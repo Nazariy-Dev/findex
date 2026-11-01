@@ -1,11 +1,14 @@
 services:
   - type: web
     name: findex
-    runtime: docker
+    runtime: python
     plan: free
+    region: frankfurt
+    buildCommand: ./scripts/render_build.sh
+    startCommand: .venv/bin/uvicorn findex.web:app --host 0.0.0.0 --port $PORT --proxy-headers
     healthCheckPath: /health
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
       - key: INDEX_PATH
-        value: /app/deploy/index.bin
-      - key: LOG_LEVEL
-        value: INFO
+        value: deploy/index.bin

@@ -2,7 +2,7 @@
 
 Повнотекстовий пошуковий рушій по документації CPython і Django: лінивий корпус, інвертований індекс, BM25, мова запитів, асинхронний краулер, FastAPI і гібридний семантичний пошук.
 
-**Жива адреса:** `<вставте адресу після деплою на Render>` · **Відео (2–3 хв):** `<вставте посилання>` · ![CI](https://github.com/<user>/findex/actions/workflows/ci.yml/badge.svg)
+**Жива адреса:** `<вставте адресу після деплою на Render>` · **Відео (2–3 хв):** `<вставте посилання>` · [![CI](https://github.com/Nazariy-Dev/findex/actions/workflows/ci.yml/badge.svg)](https://github.com/Nazariy-Dev/findex/actions/workflows/ci.yml)
 
 ![пошук](docs/search.gif)
 
@@ -120,7 +120,7 @@ Precision@5 (10 запитів, терми через OR): TF-IDF — 0.50, BM25
 
 ## Лаба 4 — типи, тести, пакування, CLI
 
-![CI](https://github.com/<user>/findex/actions/workflows/ci.yml/badge.svg)
+[![CI](https://github.com/Nazariy-Dev/findex/actions/workflows/ci.yml/badge.svg)](https://github.com/Nazariy-Dev/findex/actions/workflows/ci.yml)
 
 ```
 uv tool install .            # або: uv tool install dist/findex-0.4.0-py3-none-any.whl
