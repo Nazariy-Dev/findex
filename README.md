@@ -2,7 +2,7 @@
 
 Повнотекстовий пошуковий рушій по документації CPython і Django: лінивий корпус, інвертований індекс, BM25, мова запитів, асинхронний краулер, FastAPI і гібридний семантичний пошук.
 
-**Жива адреса:** `<вставте адресу після деплою на Render>` · **Відео (2–3 хв):** `<вставте посилання>` · [![CI](https://github.com/Nazariy-Dev/findex/actions/workflows/ci.yml/badge.svg)](https://github.com/Nazariy-Dev/findex/actions/workflows/ci.yml)
+**Жива адреса:** https://findex-eh55.onrender.com (Render free, Frankfurt; перший запит після простою будить інстанс) · **Відео-демо:** [docs/demo.webm](docs/demo.webm) (22 с, запис Playwright локального запуску того самого коміту `main`) · [![CI](https://github.com/Nazariy-Dev/findex/actions/workflows/ci.yml/badge.svg)](https://github.com/Nazariy-Dev/findex/actions/workflows/ci.yml)
 
 ![пошук](docs/search.gif)
 
@@ -31,6 +31,10 @@ uv run findex embed index.bin            # для режимів semantic і hyb
 uv run findex search index.bin '"event loop" NOT django' --mode hybrid
 uv run findex serve --index index.bin    # http://127.0.0.1:8000
 ```
+
+## Деплой
+
+Render, runtime python, план free (512 MB), регіон Frankfurt, гілка `main`. Корпус у репозиторії не зберігається: `scripts/render_build.sh` під час build клонує `Doc/` CPython і `docs/` Django, будує індекс (1243 документи, 54 794 терми) і ембединги (15 837 фрагментів). Локально весь сервіс з трьома режимами пошуку займає 334 MB RSS.
 
 ## Обмеження
 
@@ -186,7 +190,7 @@ INFO findex.crawler.fetch: retry http://127.0.0.1:8766/django/README.html in 1.0
 
 ## Лаба 7 — FastAPI і публічна адреса
 
-**Публічна адреса:** `<вставте адресу після деплою на Render>`
+**Публічна адреса:** https://findex-eh55.onrender.com
 
 ```
 findex serve --index index.bin --port 8000 [--workers 4]
@@ -211,7 +215,9 @@ docker build -t findex . && docker run -e INDEX_PATH=/app/deploy/index.bin -p 80
 | локально, 1 воркер, `async def` | 50 | 22.3 | 2200.0 | 2553.9 | 2599.0 |
 | локально, 1 воркер, `def` | 50 | 18.6 | 2682.8 | 3501.4 | 3660.0 |
 | локально, 4 воркери, `def` | 50 | 32.8 | 513.1 | 3695.0 | 3993.7 |
-| розгорнутий сервіс | 20 | `<вставте>` | `<вставте>` | `<вставте>` | `<вставте>` |
+| розгорнутий сервіс | 20 | не виміряно* | | | |
+
+\* `scripts/remote_loadtest.py https://findex-eh55.onrender.com` готовий; з середовища, де робилися виміри, хост onrender.com недоступний.
 
 ## Лаба 8 — профілювання, NumPy, семантичний пошук
 
