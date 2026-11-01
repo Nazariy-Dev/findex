@@ -13,3 +13,5 @@ wheels/
 data/
 *.bin
 *.json.idx
+.coverage
+.benchmarks/
